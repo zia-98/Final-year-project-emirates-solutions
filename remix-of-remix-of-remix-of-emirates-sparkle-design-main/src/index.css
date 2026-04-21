@@ -1,0 +1,193 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Brand colors from Emirates Solutions logo */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Primary: Vibrant Orange from logo */
+    --primary: 25 95% 53%;
+    --primary-foreground: 0 0% 100%;
+    
+    /* Secondary: Sky Blue from logo */
+    --secondary: 207 89% 61%;
+    --secondary-foreground: 0 0% 100%;
+
+    /* Accent: Fresh Green from logo */
+    --accent: 88 50% 60%;
+    --accent-foreground: 222 47% 11%;
+
+    /* Additional brand colors */
+    --brand-yellow: 54 100% 62%;
+    --brand-pink: 340 82% 52%;
+    --brand-purple: 291 64% 42%;
+    --brand-blue: 207 89% 61%;
+    --brand-green: 88 50% 60%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 25 95% 53%;
+
+    --radius: 1rem;
+
+    /* Heading color - always visible */
+    --heading: 222 47% 11%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(25 95% 53%), hsl(340 82% 52%));
+    --gradient-secondary: linear-gradient(135deg, hsl(207 89% 61%), hsl(291 64% 42%));
+    --gradient-accent: linear-gradient(135deg, hsl(88 50% 60%), hsl(54 100% 62%));
+    --gradient-hero: linear-gradient(135deg, hsl(25 95% 53% / 0.1), hsl(207 89% 61% / 0.1));
+    
+    /* Glassmorphism */
+    --glass-bg: hsl(0 0% 100% / 0.7);
+    --glass-border: hsl(0 0% 100% / 0.18);
+
+    /* Shadows */
+    --shadow-sm: 0 2px 8px hsl(25 95% 53% / 0.1);
+    --shadow-md: 0 4px 16px hsl(25 95% 53% / 0.15);
+    --shadow-lg: 0 8px 32px hsl(25 95% 53% / 0.2);
+    --shadow-glow: 0 0 40px hsl(25 95% 53% / 0.3);
+
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 25 95% 53%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 207 89% 61%;
+    --secondary-foreground: 0 0% 100%;
+
+    --accent: 88 50% 60%;
+    --accent-foreground: 222 47% 11%;
+
+    --heading: 210 40% 98%;
+
+    --muted: 217 33% 18%;
+    --muted-foreground: 215 20% 65%;
+
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 33% 18%;
+    --input: 217 33% 18%;
+    --ring: 25 95% 53%;
+
+    --glass-bg: hsl(222 47% 11% / 0.7);
+    --glass-border: hsl(0 0% 100% / 0.1);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+    font-weight: 600;
+    color: hsl(var(--heading));
+  }
+}
+
+@layer utilities {
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+  }
+
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  .gradient-secondary {
+    background: var(--gradient-secondary);
+  }
+
+  .gradient-accent {
+    background: var(--gradient-accent);
+  }
+
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .transition-smooth {
+    transition: var(--transition-smooth);
+  }
+
+  .transition-bounce {
+    transition: var(--transition-bounce);
+  }
+
+  /* Gradient text utility - ensures visible text */
+  .gradient-text-primary {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+  
+  .gradient-text-secondary {
+    background: var(--gradient-secondary);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  .gradient-text-accent {
+    background: var(--gradient-accent);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  .bg-gradient-primary {
+    background: var(--gradient-primary);
+  }
+  
+  .bg-gradient-secondary {
+    background: var(--gradient-secondary);
+  }
+}

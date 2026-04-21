@@ -1,0 +1,11 @@
+internship_id,title,company,skills_required,location,stipend,domain,description
+1,Python Developer Intern,Tech Solutions,Python Django Flask SQL,Remote,15000,Web Development,Work on backend systems using Python and Django. Developing REST APIs.
+2,Data Science Intern,Data Corp,Python Pandas Scikit-learn SQL,Bangalore,20000,Data Science,Analyze large datasets and build predictive models using Python.
+3,Frontend Developer Intern,Creative Designs,HTML CSS JavaScript React,Mumbai,12000,Web Development,Build responsive user interfaces using React and modern CSS.
+4,Machine Learning Intern,AI Innovators,Python TensorFlow PyTorch,Remote,25000,AI/ML,Research and implement deep learning models for computer vision tasks.
+5,Java Developer Intern,Enterprise Systems,Java Spring Boot SQL,Hyderabad,18000,Software Development,Develop enterprise applications using Java and Spring Boot framework.
+6,Digital Marketing Intern,Marketing Pro,SEO Content Writing Social Media,Delhi,10000,Marketing,Manage social media accounts and write SEO-friendly content.
+7,Cybersecurity Intern,Secure Net,Network Security Python Linux,Remote,15000,Cybersecurity,Assist in vulnerability assessment and penetration testing.
+8,React Native Developer,App Masters,React Native JavaScript Redux,Bangalore,22000,Mobile App Development,Build cross-platform mobile applications using React Native.
+9,Business Analyst Intern,Biz Growth,Excel SQL PowerBI,Mumbai,18000,Business Analytics,Analyze business data and create reports for stakeholders.
+10,Cloud Engineering Intern,Cloud Services,AWS Python Linux Docker,Remote,20000,Cloud Computing,Deploy and manage applications on AWS cloud infrastructure.

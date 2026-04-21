@@ -1,0 +1,26 @@
+project_id = "iitctorqrpbinaescmnv"
+
+[db]
+port = 54400
+shadow_port = 54404
+
+[api]
+port = 54401
+
+[studio]
+port = 54402
+
+[inbucket]
+port = 54403
+
+[analytics]
+enabled = true
+port = 54405
+vector_port = 54406
+
+[db.pooler]
+enabled = true
+port = 54407
+
+[functions.ai-recommendations]
+verify_jwt = false
