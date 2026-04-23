@@ -16,6 +16,31 @@ interface AIChatbotProps {
   type?: "public" | "admin";
 }
 
+const GEMINI_MODEL_CANDIDATES = [
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
+  "gemini-2.5-pro",
+  "gemini-flash-latest",
+  "gemini-pro-latest",
+  "gemma-3-4b-it",
+] as const;
+
+const shouldRetryNextModel = (status: number, body: string) => {
+  const lower = body.toLowerCase();
+  const hasInvalidKey = lower.includes("api_key_invalid") || lower.includes("api key expired") || lower.includes("api key invalid");
+  if (hasInvalidKey) return false;
+  return (
+    status === 429 ||
+    status === 404 ||
+    status === 400 ||
+    lower.includes("resource_exhausted") ||
+    lower.includes("rate limit") ||
+    lower.includes("quota") ||
+    lower.includes("not found") ||
+    lower.includes("model")
+  );
+};
+
 const AIChatbot = ({ type = "public" }: AIChatbotProps) => {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -104,23 +129,51 @@ GUIDELINES:
       const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GOOGLE_API_KEY;
       if (!API_KEY) throw new Error("API key not configured");
 
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${API_KEY}`;
-
       const payloadMessages = newMessages.map(m => ({
         role: m.role === "assistant" ? "model" : "user",
         parts: [{ text: m.content }]
       }));
 
-      const resp = await fetch(geminiUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemPrompt }] },
-          contents: payloadMessages
-        }),
-      });
+      const payload = {
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: payloadMessages
+      };
+
+      let resp: Response | null = null;
+      let lastErrorText = "";
+      for (const modelName of GEMINI_MODEL_CANDIDATES) {
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${API_KEY}`;
+        const candidateResponse = await fetch(geminiUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (candidateResponse.ok) {
+          resp = candidateResponse;
+          break;
+        }
+
+        const errorText = await candidateResponse.text();
+        lastErrorText = errorText;
+        if (errorText.toLowerCase().includes("api_key_invalid") || errorText.toLowerCase().includes("api key expired") || errorText.toLowerCase().includes("api key invalid")) {
+          throw new Error("Gemini API key is expired or invalid. Please renew the key in your environment variables.");
+        }
+        if (shouldRetryNextModel(candidateResponse.status, errorText)) {
+          console.warn(`Chat model '${modelName}' failed (${candidateResponse.status}), trying next fallback model.`);
+          continue;
+        }
+
+        throw new Error(`Failed to connect to AI assistant (${candidateResponse.status})${errorText ? `: ${errorText}` : ""}`);
+      }
+
+      if (!resp) {
+        throw new Error(lastErrorText.toLowerCase().includes("api_key_invalid") || lastErrorText.toLowerCase().includes("api key expired")
+          ? "Gemini API key is expired or invalid. Please renew the key in your environment variables."
+          : `Failed to connect to AI assistant (all fallback models failed). ${lastErrorText}`);
+      }
 
       if (!resp.ok || !resp.body) {
         throw new Error("Failed to connect to AI assistant");

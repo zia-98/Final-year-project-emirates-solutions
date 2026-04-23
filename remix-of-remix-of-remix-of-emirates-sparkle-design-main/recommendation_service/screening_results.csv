@@ -1,3 +1,10 @@
 Name,Email,Phone,Match Score,Recommendation,Matched Skills,Missing Skills,Summary
-,,,,,,,
-,,,,,,,
+SUJAL KHEDEKAR,khedekarsujay720@gmail.com,+91 9359742537,75,Shortlist,"flutter, dart, Docker",Google Cloud,"This candidate exhibits strong Flutter mobile development skills through impressive projects and relevant internship roles. Despite ambiguous future-dated internship experience and a self-assessment as 'entry-level', their technical abilities and project portfolio suggest a high potential for an Intermediate Level Mobile Developer role."
+SANIKA SALVI,sanikasalviss26@gmail.com,+91 9021089292,25,Reject,,"flutter, dart, Docker, Google Cloud","Sanika Salvi is an IT engineering student with strong web development and AI/ML project experience, demonstrating good initiative through several internships. However, her profile lacks the specific mobile development skills (Flutter, Dart) required for this role, making her an unsuitable candidate."
+FABIHA SHAIKH,fabihaias1984@gmail.com,9146190804,10,Reject,,"flutter, dart, Docker, Google Cloud","Fabiha Shaikh is an IT Engineering student with strong foundational knowledge in AI/ML, Data Science, and basic web development, supported by multiple short-term internships and projects. However, the candidate lacks the specific mobile development skills (Flutter, Dart) and intermediate-level experience required for this Mobile Developer internship role."
+Parsing Failed,N/A,N/A,0,Reject,,,Could not evaluate resume due to an error: Unknown field for GenerationConfig: response_mime_type
+Parsing Failed,N/A,N/A,0,Reject,,,Could not evaluate resume due to an error: Unknown field for GenerationConfig: response_mime_type
+Parsing Failed,N/A,N/A,0,Reject,,,Could not evaluate resume due to an error: Unknown field for GenerationConfig: response_mime_type
+Parsing Failed,N/A,N/A,0,Reject,,,Could not evaluate resume due to an error: Unknown field for GenerationConfig: response_mime_type
+Parsing Failed,N/A,N/A,0,Reject,,,Could not evaluate resume due to an error: Unknown field for GenerationConfig: response_mime_type
+Parsing Failed,N/A,N/A,0,Reject,,,Could not evaluate resume due to an error: Unknown field for GenerationConfig: response_mime_type

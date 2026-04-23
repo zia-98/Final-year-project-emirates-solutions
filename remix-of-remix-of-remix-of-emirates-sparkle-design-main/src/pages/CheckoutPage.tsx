@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { ArrowLeft, CreditCard, Truck, ShieldCheck, MapPin, Loader2 } from "lucide-react";
 import { shippingInfoSchema, validateForm, getSafeErrorMessage } from "@/lib/validation";
 import { sendOrderEmail, sendAdminNewOrder, sendAdminLowStock } from "@/lib/resend";
+import LocationPickerMap from "@/components/LocationPickerMap";
 
 interface ShippingInfo {
   fullName: string;
@@ -24,6 +25,11 @@ interface ShippingInfo {
   zipCode: string;
   country: string;
 }
+
+const DEFAULT_PICKER_LOCATION = {
+  lat: 17.01155571352629,
+  lng: 73.33517927367937,
+};
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
@@ -47,11 +53,6 @@ const CheckoutPage = () => {
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
   const razorpayKeyId = "rzp_test_Sd48PZOSYko0nI";
   const [currency, setCurrency] = useState<"INR" | "AED">("INR");
-  const addressInputRef = useRef<HTMLInputElement>(null);
-  const [googleLoaded, setGoogleLoaded] = useState(false);
-  const [locationLoading, setLocationLoading] = useState(false);
-  const [mapsUnavailableReason, setMapsUnavailableReason] = useState<string | null>(null);
-  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || import.meta.env.VITE_GOOGLE_API_KEY;
 
   const EXCHANGE_RATE = 22.5; // 1 AED = 22.5 INR
 
@@ -95,138 +96,35 @@ const CheckoutPage = () => {
     }
   }, [user, profile]);
 
-  // Load Google Maps script
-  useEffect(() => {
-    if ((window as any).google && (window as any).google.maps) {
-      setGoogleLoaded(true);
-      return;
-    }
+  const handleLocationConfirm = (location: {
+    address: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+    latitude: number;
+    longitude: number;
+  }) => {
+    setShippingInfo(prev => ({
+      ...prev,
+      address: location.address || prev.address,
+      city: location.city || prev.city,
+      state: location.state || prev.state,
+      zipCode: location.zipCode || prev.zipCode,
+      country: location.country || prev.country,
+    }));
 
-    if (!googleMapsApiKey) {
-      setMapsUnavailableReason("Address autocomplete is unavailable. Please enter your address manually.");
-      return;
-    }
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.address;
+      delete newErrors.city;
+      delete newErrors.state;
+      delete newErrors.zipCode;
+      delete newErrors.country;
+      return newErrors;
+    });
 
-    const existingScript = document.getElementById("google-maps-script") as HTMLScriptElement | null;
-    if (existingScript) {
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.id = "google-maps-script";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places`;
-    script.async = true;
-    script.onload = () => setGoogleLoaded(true);
-    script.onerror = () => {
-      setMapsUnavailableReason("Google Maps failed to load. Please verify Maps API key, billing, and API restrictions.");
-      toast.error("Google Maps could not be loaded. You can still type your address manually.");
-    };
-    document.body.appendChild(script);
-  }, [googleMapsApiKey]);
-
-  // Initialize Autocomplete
-  useEffect(() => {
-    if (!googleLoaded || !addressInputRef.current) return;
-
-    try {
-      const autocomplete = new (window as any).google.maps.places.Autocomplete(addressInputRef.current, {
-        fields: ["address_components", "formatted_address"],
-      });
-
-      autocomplete.addListener("place_changed", () => {
-        const place = autocomplete.getPlace();
-        if (!place.address_components) return;
-
-        let address = "";
-        let city = "";
-        let state = "";
-        let zipCode = "";
-        let country = "";
-
-        for (const component of place.address_components) {
-          const componentType = component.types[0];
-
-          switch (componentType) {
-            case "street_number":
-              address = `${component.long_name} ${address}`;
-              break;
-            case "route":
-              address += component.short_name;
-              break;
-            case "sublocality_level_1":
-            case "sublocality_level_2":
-            case "sublocality_level_3":
-            case "neighborhood":
-              if (address) {
-                address += `, ${component.long_name}`;
-              } else {
-                address = component.long_name;
-              }
-              break;
-            case "locality":
-              city = component.long_name;
-              break;
-            case "administrative_area_level_1":
-              state = component.long_name;
-              break;
-            case "postal_code":
-              zipCode = component.long_name;
-              break;
-            case "country":
-              country = component.long_name;
-              break;
-          }
-        }
-
-        const finalAddress = address.trim() || place.formatted_address?.split(',')[0] || "";
-
-        setShippingInfo(prev => ({
-          ...prev,
-          address: finalAddress || prev.address,
-          city: city || prev.city,
-          state: state || prev.state,
-          zipCode: zipCode || prev.zipCode,
-          country: country || prev.country
-        }));
-
-        setErrors(prev => {
-          const newErrors = { ...prev };
-          delete newErrors.address;
-          delete newErrors.city;
-          delete newErrors.state;
-          delete newErrors.zipCode;
-          delete newErrors.country;
-          return newErrors;
-        });
-      });
-    } catch (error) {
-      console.error("Failed to initialize Google Maps Autocomplete:", error);
-    }
-  }, [googleLoaded]);
-
-  const handleUseCurrentLocation = () => {
-    setLocationLoading(true);
-    setTimeout(() => {
-      setShippingInfo(prev => ({
-        ...prev,
-        address: "IT Department, Finolex Academy of Management and Technology",
-        city: "Ratnagiri",
-        state: "Maharashtra",
-        zipCode: "415612",
-        country: "India"
-      }));
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors.address;
-        delete newErrors.city;
-        delete newErrors.state;
-        delete newErrors.zipCode;
-        delete newErrors.country;
-        return newErrors;
-      });
-      setLocationLoading(false);
-      toast.success("Location filled successfully!");
-    }, 300);
+    toast.success("Location confirmed successfully!");
   };
 
   const shippingCost = totalAmount > 500 ? 0 : 25;
@@ -621,37 +519,15 @@ const CheckoutPage = () => {
                     <div className="space-y-2 sm:col-span-2">
                       <div className="flex justify-between items-center">
                         <Label htmlFor="address">Address *</Label>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 px-2 text-xs text-primary hover:bg-primary/10 gap-1"
-                          onClick={handleUseCurrentLocation}
-                          disabled={locationLoading || loading}
-                        >
-                          {locationLoading ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <MapPin className="w-3 h-3" />
-                          )}
-                          Use Finolex Location
-                        </Button>
                       </div>
-                      <div className="rounded-md overflow-hidden border my-2">
-                        <iframe 
-                          src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3815.246889717215!2d73.33517927367937!3d17.01155571352629!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bea0cf716650747%3A0x62aba74500cb7f7b!2sIT%20Department%20Finolex%20Academy%20of%20Management%20and%20Technology!5e0!3m2!1sen!2sin!4v1776163891520!5m2!1sen!2sin" 
-                          width="100%" 
-                          height="200" 
-                          style={{ border: 0 }} 
-                          allowFullScreen={false} 
-                          loading="lazy" 
-                          referrerPolicy="no-referrer-when-downgrade"
-                        ></iframe>
-                      </div>
+                      <LocationPickerMap
+                        defaultPosition={DEFAULT_PICKER_LOCATION}
+                        onConfirmLocation={handleLocationConfirm}
+                        disabled={loading}
+                      />
                       <Input
-                        ref={addressInputRef}
                         id="address"
-                        placeholder="Search for your address..."
+                        placeholder="Enter your address"
                         value={shippingInfo.address}
                         onChange={(e) => handleChange("address", e.target.value)}
                         maxLength={500}
@@ -661,9 +537,6 @@ const CheckoutPage = () => {
                       />
                       {errors.address && (
                         <p className="text-sm text-destructive">{errors.address}</p>
-                      )}
-                      {mapsUnavailableReason && !errors.address && (
-                        <p className="text-xs text-muted-foreground">{mapsUnavailableReason}</p>
                       )}
                     </div>
                     <div className="space-y-2">

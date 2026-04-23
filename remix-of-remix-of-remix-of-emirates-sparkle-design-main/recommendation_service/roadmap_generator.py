@@ -36,13 +36,17 @@ class Roadmap(BaseModel):
 class AI_RoadmapGenerator:
     def __init__(self):
         self.api_key = os.getenv("GOOGLE_API_KEY")
+        self.model_candidates = [
+            "gemini-3.1-flash-lite",
+            "gemini-2.5-flash-lite",
+            "gemma-3-4b",
+        ]
         if not self.api_key:
             print("WARNING: GOOGLE_API_KEY not found in env. AI features will fail.")
             self.llm = None
         else:
             print(f"DEBUG: Using API Key: {self.api_key[:5]}...{self.api_key[-5:] if self.api_key else 'None'}")
-            # Use gemini-3-flash-preview for best compatibility and speed in this environment
-            self.llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview", google_api_key=self.api_key, max_retries=1)
+            self.llm = ChatGoogleGenerativeAI(model=self.model_candidates[0], google_api_key=self.api_key, max_retries=1)
         
         self.parser = PydanticOutputParser(pydantic_object=Roadmap)
 
@@ -87,6 +91,41 @@ class AI_RoadmapGenerator:
             partial_variables={"format_instructions": self.parser.get_format_instructions()}
         )
 
+    def _is_rate_limit_error(self, error):
+        message = str(error).lower()
+        status_code = getattr(error, "status_code", None)
+        code = getattr(error, "code", None)
+        return (
+            status_code == 429
+            or code == 429
+            or "rate limit" in message
+            or "resource_exhausted" in message
+            or "quota" in message
+            or "too many requests" in message
+        )
+
+    def _invoke_with_model_fallback(self, prompt_text):
+        if not self.api_key:
+            raise RuntimeError("No API key configured for Gemini")
+
+        last_error = None
+        for model_name in self.model_candidates:
+            try:
+                llm = ChatGoogleGenerativeAI(model=model_name, google_api_key=self.api_key, max_retries=1)
+                response = llm.invoke(prompt_text)
+                self.llm = llm
+                return response
+            except Exception as error:
+                last_error = error
+                if self._is_rate_limit_error(error):
+                    print(f"Rate limited on model '{model_name}', trying next fallback...")
+                    continue
+                raise
+
+        if last_error:
+            raise last_error
+        raise RuntimeError("No Gemini model candidates configured")
+
     def generate(self, title, duration="8 weeks", student_profile="N/A", availability="N/A"):
         if not self.llm:
             return {"error": "AI service not configured (missing API key)"}
@@ -130,8 +169,8 @@ class AI_RoadmapGenerator:
                 availability=availability
             )
             
-            print("Generating personalized roadmap with Gemini Flash...")
-            output = self.llm.invoke(_input.to_string())
+            print("Generating personalized roadmap with Gemini fallback chain...")
+            output = self._invoke_with_model_fallback(_input.to_string())
             
             try:
                 parsed_output = self.parser.parse(output.content)

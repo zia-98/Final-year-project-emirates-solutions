@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -768,6 +769,12 @@ const AdminInternships = () => {
 
       <Dialog open={isAddInternshipOpen} onOpenChange={setIsAddInternshipOpen}>
         <DialogContent className="max-w-2xl border-none shadow-2xl rounded-2xl overflow-hidden p-0 bg-white">
+          <DialogTitle className="sr-only">
+            {editingInternship ? "Edit internship program" : "Create internship program"}
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            Configure internship details, eligibility, and capacity before publishing.
+          </DialogDescription>
           <div className={cn("p-6 text-white flex items-center justify-between", editingInternship ? "bg-blue-600" : "bg-primary")}>
             <div>
               <h2 className="text-2xl font-bold italic tracking-tight">{editingInternship ? "Recalibrate Program" : "Architect New Program"}</h2>
@@ -913,6 +920,12 @@ const AdminInternships = () => {
       </Dialog>
       <Dialog open={!!selectedApplication} onOpenChange={() => setSelectedApplication(null)}>
         <DialogContent className="max-w-3xl border-none shadow-2xl rounded-3xl overflow-hidden p-0 bg-white">
+          <DialogTitle className="sr-only">
+            {selectedApplication ? `${selectedApplication.full_name} application dossier` : "Application dossier"}
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            View application details and update the candidate status.
+          </DialogDescription>
           <div className="bg-slate-900 p-8 text-white relative overflow-hidden">
             <div className="absolute top-0 right-0 p-8 opacity-10">
               <GraduationCap className="h-24 w-24" />

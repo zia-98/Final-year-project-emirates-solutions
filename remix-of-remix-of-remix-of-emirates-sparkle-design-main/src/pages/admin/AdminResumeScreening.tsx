@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -63,6 +64,7 @@ interface Candidate {
   summary: string;
   status: string;
   resume_filename: string;
+  error_message?: string | null;
 }
 
 interface Criteria {
@@ -381,7 +383,9 @@ const AdminResumeScreening = () => {
                           <TableCell className="py-5 px-8">
                             <div className="flex flex-col">
                               <span className="font-bold text-slate-900 leading-tight tracking-tight">{c.candidate_name || c.resume_filename}</span>
-                              <span className="text-xs text-slate-400 mt-1 italic font-medium">{c.email || "Processing info..."}</span>
+                              <span className="text-xs text-slate-400 mt-1 italic font-medium">
+                                {c.status === "Failed" ? (c.error_message || "Screening failed") : (c.email || "Processing info...")}
+                              </span>
                             </div>
                           </TableCell>
                           <TableCell className="text-center">
@@ -445,6 +449,12 @@ const AdminResumeScreening = () => {
       {/* Candidate Detail Modal */}
       <Dialog open={!!selectedCandidate} onOpenChange={() => setSelectedCandidate(null)}>
         <DialogContent className="max-w-4xl border-none shadow-2xl rounded-2xl p-0 overflow-hidden bg-white">
+          <DialogTitle className="sr-only">
+            {selectedCandidate ? `${selectedCandidate.candidate_name} candidate review` : "Candidate review"}
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            Detailed screening summary, skills analysis, and recommendation for the selected candidate.
+          </DialogDescription>
           {selectedCandidate && (
             <>
               <div className={cn("p-8 text-white flex items-center justify-between", 

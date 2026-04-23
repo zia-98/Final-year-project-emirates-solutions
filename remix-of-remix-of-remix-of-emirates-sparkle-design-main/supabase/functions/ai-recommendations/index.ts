@@ -12,6 +12,52 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const GEMINI_MODEL_CANDIDATES = [
+  "gemini-3.1-flash-lite",
+  "gemini-2.5-flash-lite",
+  "gemma-3-4b",
+] as const;
+
+const isRateLimited = (status: number, body: string) => {
+  const lower = body.toLowerCase();
+  return status === 429 || lower.includes("resource_exhausted") || lower.includes("rate limit") || lower.includes("quota");
+};
+
+const callGeminiWithFallback = async (
+  apiKey: string,
+  payload: unknown,
+  endpoint: "generateContent" | "streamGenerateContent" = "generateContent",
+): Promise<Response> => {
+  let lastErrorText = "";
+  let lastStatus = 500;
+
+  for (const modelName of GEMINI_MODEL_CANDIDATES) {
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:${endpoint}?key=${apiKey}`;
+    const response = await fetch(geminiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (response.ok) {
+      return response;
+    }
+
+    const errorText = await response.text();
+    lastErrorText = errorText;
+    lastStatus = response.status;
+
+    if (isRateLimited(response.status, errorText)) {
+      console.warn(`Rate limited on model '${modelName}', trying fallback model...`);
+      continue;
+    }
+
+    throw new Error(`Gemini API Error: ${response.status} - ${errorText}`);
+  }
+
+  throw new Error(`Gemini API Error: ${lastStatus} - ${lastErrorText}`);
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -110,8 +156,6 @@ serve(async (req) => {
         ${rawResumeText.slice(0, 3000)}
         `;
 
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
-      
       const safetySettings = [
         { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
         { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
@@ -119,20 +163,10 @@ serve(async (req) => {
         { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
       ];
 
-      const response = await fetch(geminiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          contents: [{ parts: [{ text: parsePrompt }] }],
-          safetySettings
-        })
+      const response = await callGeminiWithFallback(API_KEY, {
+        contents: [{ parts: [{ text: parsePrompt }] }],
+        safetySettings,
       });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Gemini API Error:", response.status, errorText);
-        throw new Error(`Gemini API Error: ${response.status} - ${errorText}`);
-      }
 
       const data = await response.json();
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
@@ -306,14 +340,8 @@ serve(async (req) => {
         Do not use markdown.`;
 
       // Call Gemini API
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
-
-      const aiResponse = await fetch(geminiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: aiPrompt }] }]
-        })
+      const aiResponse = await callGeminiWithFallback(API_KEY, {
+        contents: [{ parts: [{ text: aiPrompt }] }],
       });
 
       if (aiResponse.ok) {

@@ -37,6 +37,7 @@ import { format } from "date-fns";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -486,6 +487,10 @@ const AdminUsers = () => {
 
       <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
         <DialogContent className="rounded-2xl border-none shadow-2xl p-0 overflow-hidden max-w-md">
+          <DialogTitle className="sr-only">Member Invitation</DialogTitle>
+          <DialogDescription className="sr-only">
+            Create and invite a new administrator or user account.
+          </DialogDescription>
           <div className="gradient-primary p-6 text-white text-center">
             <UserPlus className="h-10 w-10 mx-auto mb-2 opacity-80" />
             <h2 className="text-2xl font-bold italic">Member Invitation</h2>
@@ -559,6 +564,10 @@ const AdminUsers = () => {
 
       <Dialog open={isEditUserOpen} onOpenChange={setIsEditUserOpen}>
         <DialogContent className="rounded-2xl border-none shadow-2xl p-0 overflow-hidden max-w-md">
+          <DialogTitle className="sr-only">Edit Profile</DialogTitle>
+          <DialogDescription className="sr-only">
+            Update the selected user's profile information.
+          </DialogDescription>
           <div className="gradient-primary p-6 text-white text-center">
             <User className="h-10 w-10 mx-auto mb-2 opacity-80" />
             <h2 className="text-2xl font-bold italic">Edit Profile</h2>

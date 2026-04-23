@@ -28,15 +28,57 @@ class InternshipRecommender:
         self.tfidf_matrix = None
         self.tfidf = None
         self.indices = None
+        self.model_candidates = [
+            "gemini-3.1-flash-lite",
+            "gemini-2.5-flash-lite",
+            "gemma-3-4b",
+        ]
+        self.api_key = None
         
         # Initialize LLM for Re-ranking
         api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+        self.api_key = api_key
         if api_key:
-            self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=api_key)
-            print("LLM Re-ranker initialized.")
+            self.llm = ChatGoogleGenerativeAI(model=self.model_candidates[0], google_api_key=api_key)
+            print(f"LLM Re-ranker initialized with {self.model_candidates[0]}.")
         else:
             self.llm = None
             print("WARNING: No API Key found for Re-ranking.")
+
+    def _is_rate_limit_error(self, error):
+        message = str(error).lower()
+        status_code = getattr(error, "status_code", None)
+        code = getattr(error, "code", None)
+        return (
+            status_code == 429
+            or code == 429
+            or "rate limit" in message
+            or "resource_exhausted" in message
+            or "quota" in message
+            or "too many requests" in message
+        )
+
+    def _invoke_with_model_fallback(self, prompt):
+        if not self.api_key:
+            raise RuntimeError("No API key configured for Gemini")
+
+        last_error = None
+        for model_name in self.model_candidates:
+            try:
+                llm = ChatGoogleGenerativeAI(model=model_name, google_api_key=self.api_key)
+                response = llm.invoke(prompt)
+                self.llm = llm
+                return response
+            except Exception as error:
+                last_error = error
+                if self._is_rate_limit_error(error):
+                    print(f"Rate limited on model '{model_name}', trying next fallback...")
+                    continue
+                raise
+
+        if last_error:
+            raise last_error
+        raise RuntimeError("No Gemini model candidates configured")
 
     def load_data(self):
         """Loads the dataset and handles missing values."""
@@ -199,7 +241,7 @@ class InternshipRecommender:
                 Example: [{{"id": 0, "reasoning": "Fits your advanced Python skill level."}}]
                 """
                 
-                response = self.llm.invoke(prompt)
+                response = self._invoke_with_model_fallback(prompt)
                 ai_data = response.content
                 # Robust extraction
                 import json, re

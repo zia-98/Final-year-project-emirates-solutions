@@ -5,6 +5,62 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const GEMINI_MODEL_CANDIDATES = [
+  "gemini-3.1-flash-lite",
+  "gemini-2.5-flash-lite",
+  "gemma-3-4b",
+] as const;
+
+const isRateLimited = (status: number, body: string) => {
+  const lower = body.toLowerCase();
+  return status === 429 || lower.includes("resource_exhausted") || lower.includes("rate limit") || lower.includes("quota");
+};
+
+const isInvalidApiKey = (status: number, body: string) => {
+  const lower = body.toLowerCase();
+  return (
+    status === 400 &&
+    (lower.includes("api_key_invalid") || lower.includes("api key expired") || lower.includes("api key invalid"))
+  );
+};
+
+const callGeminiStreamWithFallback = async (apiKey: string, payload: unknown): Promise<Response> => {
+  let lastErrorText = "";
+  let lastStatus = 500;
+
+  for (const modelName of GEMINI_MODEL_CANDIDATES) {
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${apiKey}`;
+    const response = await fetch(geminiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (response.ok) {
+      return response;
+    }
+
+    const errorText = await response.text();
+    lastErrorText = errorText;
+    lastStatus = response.status;
+
+    if (isInvalidApiKey(response.status, errorText)) {
+      throw new Error("Gemini API key is expired or invalid. Please renew the key in your environment variables.");
+    }
+
+    if (isRateLimited(response.status, errorText)) {
+      console.warn(`Rate limited on model '${modelName}', trying fallback model...`);
+      continue;
+    }
+
+    throw new Error(`AI service error: ${response.status} - ${errorText}`);
+  }
+
+  throw new Error(`AI service error: ${lastStatus} - ${lastErrorText}`);
+};
+
 const COMPANY_KNOWLEDGE_BASE = `
 You are the AI Assistant for Emirates Solutions, an IT solutions company based in Ratnagiri, Maharashtra, India.
 
@@ -70,22 +126,14 @@ serve(async (req) => {
       ? `${COMPANY_KNOWLEDGE_BASE}\n\nYou are assisting an ADMIN user. Provide detailed technical information and administrative guidance.`
       : `${COMPANY_KNOWLEDGE_BASE}\n\nYou are assisting a student or general user. Be helpful and guide them through services, internships, and products.`;
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${API_KEY}`;
-
-    const response = await fetch(geminiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [
-          { role: "user", parts: [{ text: systemPrompt }] },
-          ...messages.map((m: any) => ({
-            role: m.role === "assistant" ? "model" : "user",
-            parts: [{ text: m.content }]
-          }))
-        ]
-      }),
+    const response = await callGeminiStreamWithFallback(API_KEY, {
+      contents: [
+        { role: "user", parts: [{ text: systemPrompt }] },
+        ...messages.map((m: any) => ({
+          role: m.role === "assistant" ? "model" : "user",
+          parts: [{ text: m.content }]
+        }))
+      ]
     });
 
     if (!response.ok) {

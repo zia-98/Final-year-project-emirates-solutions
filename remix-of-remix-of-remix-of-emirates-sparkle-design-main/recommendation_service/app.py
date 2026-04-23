@@ -234,32 +234,46 @@ async def process_screening():
                 task_db = next(get_db())
                 try:
                     candidate = task_db.query(Candidate).filter(Candidate.id == candidate_id).first()
+                    if not candidate:
+                        raise RuntimeError(f"Candidate {candidate_id} not found")
+
                     candidate.status = "Processing"
                     task_db.commit()
                     
                     print(f"DEBUG: Calling AI for candidate {candidate_id}")
                     evaluation = await evaluate_resume(criteria_dict, candidate.resume_text)
+                    if not evaluation.get("success"):
+                        error_message = evaluation.get("error", "Unknown AI screening error")
+                        print(f"DEBUG: AI failed for candidate {candidate_id}: {error_message}")
+                        candidate.status = "Failed"
+                        candidate.error_message = error_message
+                        task_db.commit()
+                        return
+
+                    result = evaluation.get("data") or {}
                     print(f"DEBUG: AI success for candidate {candidate_id}")
-                    
-                    candidate.candidate_name = evaluation.get("candidate_name")
-                    candidate.email = evaluation.get("email")
-                    candidate.phone = evaluation.get("phone")
-                    candidate.skills_matched = evaluation.get("skills_matched")
-                    candidate.skills_missing = evaluation.get("skills_missing")
-                    candidate.education = evaluation.get("education")
-                    candidate.experience_years = evaluation.get("experience_years")
-                    candidate.match_score = evaluation.get("match_score")
-                    candidate.strengths = evaluation.get("strengths")
-                    candidate.weaknesses = evaluation.get("weaknesses")
-                    candidate.recommendation = evaluation.get("recommendation")
-                    candidate.summary = evaluation.get("summary")
+
+                    candidate.candidate_name = result.get("candidate_name")
+                    candidate.email = result.get("email")
+                    candidate.phone = result.get("phone")
+                    candidate.skills_matched = result.get("skills_matched")
+                    candidate.skills_missing = result.get("skills_missing")
+                    candidate.education = result.get("education")
+                    candidate.experience_years = result.get("experience_years")
+                    candidate.match_score = result.get("match_score")
+                    candidate.strengths = result.get("strengths")
+                    candidate.weaknesses = result.get("weaknesses")
+                    candidate.recommendation = result.get("recommendation")
+                    candidate.summary = result.get("summary")
+                    candidate.error_message = None
                     candidate.status = "Completed"
                     task_db.commit()
                 except Exception as e:
                     print(f"DEBUG: Error processing candidate {candidate_id}: {e}")
-                    candidate.status = "Failed"
-                    candidate.error_message = str(e)
-                    task_db.commit()
+                    if 'candidate' in locals() and candidate is not None:
+                        candidate.status = "Failed"
+                        candidate.error_message = str(e)
+                        task_db.commit()
                 finally:
                     task_db.close()
 

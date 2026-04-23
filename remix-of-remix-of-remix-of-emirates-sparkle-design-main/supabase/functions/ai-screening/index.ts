@@ -6,6 +6,50 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const GEMINI_MODEL_CANDIDATES = [
+  "gemini-3.1-flash-lite",
+  "gemini-2.5-flash-lite",
+  "gemma-3-4b",
+] as const;
+
+const isRateLimited = (status: number, body: string) => {
+  const lower = body.toLowerCase();
+  return status === 429 || lower.includes("resource_exhausted") || lower.includes("rate limit") || lower.includes("quota");
+};
+
+const callGeminiWithFallback = async (apiKey: string, payload: unknown): Promise<Response> => {
+  let lastErrorText = "";
+  let lastStatus = 500;
+
+  for (const modelName of GEMINI_MODEL_CANDIDATES) {
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+    const response = await fetch(geminiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (response.ok) {
+      return response;
+    }
+
+    const errorText = await response.text();
+    lastErrorText = errorText;
+    lastStatus = response.status;
+
+    if (isRateLimited(response.status, errorText)) {
+      console.warn(`Rate limited on model '${modelName}', trying fallback model...`);
+      continue;
+    }
+
+    throw new Error(`AI service error: ${response.status}`);
+  }
+
+  throw new Error(`AI service error: ${lastStatus} - ${lastErrorText}`);
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -101,22 +145,14 @@ Return a JSON object with this exact format:
 }
 IMPORTANT: Return ONLY valid JSON. No markdown.`;
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
-
-    const aiResponse = await fetch(geminiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [
-          { role: "user", parts: [{ text: "You are an expert HR AI assistant specialized in screening internship applications. Provide fair, unbiased evaluations. Always respond with valid JSON." }] },
-          { role: "user", parts: [{ text: aiPrompt }] }
-        ],
-        generationConfig: {
-          response_mime_type: "application/json",
-        }
-      }),
+    const aiResponse = await callGeminiWithFallback(API_KEY, {
+      contents: [
+        { role: "user", parts: [{ text: "You are an expert HR AI assistant specialized in screening internship applications. Provide fair, unbiased evaluations. Always respond with valid JSON." }] },
+        { role: "user", parts: [{ text: aiPrompt }] }
+      ],
+      generationConfig: {
+        response_mime_type: "application/json",
+      }
     });
 
     if (!aiResponse.ok) {
