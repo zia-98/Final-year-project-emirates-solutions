@@ -1,7 +1,8 @@
 import codecs
 import re
+from pathlib import Path
 
-path = r'c:\Users\ziabh\Music\remix-of-remix-of-remix-of-emirates-sparkle-design-main\remix-of-remix-of-remix-of-emirates-sparkle-design-main\src\pages\CheckoutPage.tsx'
+path = Path(__file__).resolve().parent / 'src' / 'pages' / 'CheckoutPage.tsx'
 
 with codecs.open(path, 'r', 'utf-8') as f:
     content = f.read()
