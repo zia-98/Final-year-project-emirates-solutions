@@ -1,0 +1,81 @@
+name: Internship Platform CI
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  backend-lint:
+    name: backend-lint
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout repository code for linting.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Set up the requested Python runtime.
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: recommendation_service/requirements.txt
+
+      # Validate backend dependency manifest exists before installing.
+      - name: Verify requirements.txt exists
+        run: |
+          if [ ! -f recommendation_service/requirements.txt ]; then
+            echo "Error: recommendation_service/requirements.txt not found."
+            exit 1
+          fi
+
+      # Install backend dependencies and linting tool.
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r recommendation_service/requirements.txt
+          pip install flake8
+
+      # Lint only the backend service directory with explicit exclusions.
+      - name: Run flake8
+        run: |
+          flake8 recommendation_service \
+            --max-line-length=100 \
+            --exclude=__pycache__,.venv,venv,temp_resumes
+
+  frontend-build:
+    name: frontend-build
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout repository code for building the frontend.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Set up the requested Node.js runtime.
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      # Use deterministic install when lockfile is present; otherwise fall back.
+      - name: Install frontend dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      # Build the Vite + TypeScript frontend from project root.
+      - name: Build frontend
+        run: npm run build
