@@ -64,3 +64,18 @@ Thumbs.db
 *.7z
 *.mp4
 
+# Docker
+docker-compose.override.yml
+docker-compose.override.yaml
+
+# Python build artifacts
+*.egg-info/
+*.egg
+*.whl
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Recommendation service runtime data
+recommendation_service/temp_resumes/
+recommendation_service/screening_results.csv
+recommendation_service/*.db
