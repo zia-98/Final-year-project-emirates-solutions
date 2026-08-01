@@ -24,5 +24,3 @@ pymupdf
 python-docx
 openpyxl
 
-# Build Tools
-packaging>=24.0
