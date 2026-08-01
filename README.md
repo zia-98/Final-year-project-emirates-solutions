@@ -51,12 +51,20 @@ The application is split into two main parts:
 - `public/` - Static assets and public files
 - `recommendation_service/` - Python backend for recommendations, roadmap generation, and resume screening
 - `supabase/` - Supabase config, migrations, and Edge Functions
-- `start_app.bat` - Windows launcher for backend + frontend
+- `Dockerfile` - Multi-stage frontend build (Node → Nginx)
+- `recommendation_service/Dockerfile` - Backend container image (Python 3.11)
+- `docker-compose.yml` - Orchestrates frontend + backend with health checks
+- `nginx.conf` - Nginx config for SPA routing in the frontend container
+- `.dockerignore` / `recommendation_service/.dockerignore` - Docker build exclusions
+- `.env.example` - Environment variable template with placeholder values
+- `start_app.bat` - Windows launcher for backend + frontend (non-Docker)
 - `USER_MANUAL_ISO_IEC_26515.md` - Detailed user manual and setup reference
 
 ## Prerequisites
 
 Install the following before running the project:
+
+### Without Docker
 
 - Node.js 18 or later
 - npm
@@ -65,9 +73,22 @@ Install the following before running the project:
 - A Supabase project
 - Optional: Gemini / Google API key, Google Maps API key, and Razorpay key if you use those features
 
+### With Docker (recommended for deployment)
+
+- Docker Desktop (or Docker Engine + Docker Compose v2)
+- Git
+- A Supabase project
+- Optional: Gemini / Google API key, Google Maps API key, and Razorpay key if you use those features
+
 ## Environment Variables
 
-Create a `.env` file at the project root for the frontend and a `.env` file inside `recommendation_service/` for the backend.
+A template is provided at `.env.example`. Copy it and fill in your values:
+
+```bash
+cp .env.example .env
+```
+
+The root `.env` file is used by both the frontend (via Vite) and Docker Compose. The backend also needs a `.env` inside `recommendation_service/` for non-Docker local development.
 
 ### Frontend `.env`
 
@@ -159,6 +180,34 @@ Then open the local URL shown by Vite, usually:
 ```text
 http://localhost:5173
 ```
+
+### Option 3: Docker (recommended for deployment)
+
+Make sure your root `.env` file is populated, then:
+
+```bash
+# Build both images
+docker compose build
+
+# Start the containers
+docker compose up
+```
+
+Once running:
+
+| Service | URL |
+|---|---|
+| Frontend | [http://localhost:8080](http://localhost:8080) |
+| Backend API | [http://localhost:5001](http://localhost:5001) |
+| Swagger Docs | [http://localhost:5001/docs](http://localhost:5001/docs) |
+
+To stop:
+
+```bash
+docker compose down
+```
+
+> **Note:** Vite bakes environment variables at build time. If you change any `VITE_*` variable in `.env`, you must rebuild the frontend image: `docker compose build frontend`.
 
 ## Build
 
