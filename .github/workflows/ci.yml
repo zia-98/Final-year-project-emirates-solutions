@@ -42,7 +42,7 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-          cache-dependency-path: ${{ steps.backend_paths.outputs.requirements_file }}
+          cache-dependency-path: "**/recommendation_service/requirements.txt"
 
       # Validate backend dependency manifest exists before installing.
       - name: Verify requirements.txt exists
@@ -92,6 +92,10 @@ jobs:
           FRONTEND_DIR="$(dirname "$PACKAGE_JSON_PATH")"
           LOCKFILE_PATH="$FRONTEND_DIR/package-lock.json"
 
+          # Normalize to paths relative to repository root for action inputs.
+          FRONTEND_DIR="${FRONTEND_DIR#./}"
+          LOCKFILE_PATH="${LOCKFILE_PATH#./}"
+
           echo "frontend_dir=$FRONTEND_DIR" >> "$GITHUB_OUTPUT"
 
           if [ -n "$LOCKFILE_PATH" ]; then
@@ -107,21 +111,21 @@ jobs:
             echo "lock_path=" >> "$GITHUB_OUTPUT"
           fi
 
-      # Set up Node.js 20 with npm cache when lockfile exists.
+      # Set up Node.js 24 with npm cache when lockfile exists.
       - name: Set up Node.js
         if: steps.frontend_paths.outputs.lock_exists == 'true'
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: npm
           cache-dependency-path: ${{ steps.frontend_paths.outputs.lock_path }}
 
-      # Set up Node.js 20 without cache when lockfile is absent.
+      # Set up Node.js 24 without cache when lockfile is absent.
       - name: Set up Node.js (no lockfile cache)
         if: steps.frontend_paths.outputs.lock_exists != 'true'
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
 
       # Use deterministic install when lockfile is present; otherwise fall back.
       - name: Install frontend dependencies
