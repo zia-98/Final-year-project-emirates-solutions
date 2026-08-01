@@ -21,33 +21,51 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Set up the requested Python runtime.
+      # Discover backend paths to support nested repository layouts.
+      - name: Discover backend paths
+        id: backend_paths
+        shell: bash
+        run: |
+          REQUIREMENTS_FILE="$(find . -type f -path '*/recommendation_service/requirements.txt' | head -n 1)"
+          if [ -z "$REQUIREMENTS_FILE" ]; then
+            echo "Error: recommendation_service/requirements.txt not found anywhere in the repository."
+            exit 1
+          fi
+
+          BACKEND_DIR="$(dirname "$REQUIREMENTS_FILE")"
+          echo "requirements_file=$REQUIREMENTS_FILE" >> "$GITHUB_OUTPUT"
+          echo "backend_dir=$BACKEND_DIR" >> "$GITHUB_OUTPUT"
+
+      # Set up the requested Python runtime with pip cache.
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
-          cache-dependency-path: recommendation_service/requirements.txt
+          cache-dependency-path: ${{ steps.backend_paths.outputs.requirements_file }}
 
       # Validate backend dependency manifest exists before installing.
       - name: Verify requirements.txt exists
+        shell: bash
         run: |
-          if [ ! -f recommendation_service/requirements.txt ]; then
-            echo "Error: recommendation_service/requirements.txt not found."
+          if [ ! -f "${{ steps.backend_paths.outputs.requirements_file }}" ]; then
+            echo "Error: ${{ steps.backend_paths.outputs.requirements_file }} was expected but not found at runtime."
             exit 1
           fi
 
       # Install backend dependencies and linting tool.
       - name: Install Python dependencies
+        shell: bash
         run: |
           python -m pip install --upgrade pip
-          pip install -r recommendation_service/requirements.txt
+          pip install -r "${{ steps.backend_paths.outputs.requirements_file }}"
           pip install flake8
 
       # Lint only the backend service directory with explicit exclusions.
       - name: Run flake8
+        shell: bash
         run: |
-          flake8 recommendation_service \
+          flake8 "${{ steps.backend_paths.outputs.backend_dir }}" \
             --max-line-length=100 \
             --exclude=__pycache__,.venv,venv,temp_resumes
 
@@ -60,15 +78,55 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Set up the requested Node.js runtime.
+      # Discover frontend project directory and lockfile.
+      - name: Discover frontend paths
+        id: frontend_paths
+        shell: bash
+        run: |
+          PACKAGE_JSON_PATH="$(find . -type f -name 'package.json' -not -path '*/node_modules/*' | head -n 1)"
+          if [ -z "$PACKAGE_JSON_PATH" ]; then
+            echo "Error: package.json not found in repository."
+            exit 1
+          fi
+
+          FRONTEND_DIR="$(dirname "$PACKAGE_JSON_PATH")"
+          LOCKFILE_PATH="$FRONTEND_DIR/package-lock.json"
+
+          echo "frontend_dir=$FRONTEND_DIR" >> "$GITHUB_OUTPUT"
+
+          if [ -n "$LOCKFILE_PATH" ]; then
+            if [ -f "$LOCKFILE_PATH" ]; then
+              echo "lock_exists=true" >> "$GITHUB_OUTPUT"
+              echo "lock_path=$LOCKFILE_PATH" >> "$GITHUB_OUTPUT"
+            else
+              echo "lock_exists=false" >> "$GITHUB_OUTPUT"
+              echo "lock_path=" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "lock_exists=false" >> "$GITHUB_OUTPUT"
+            echo "lock_path=" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Set up Node.js 20 with npm cache when lockfile exists.
       - name: Set up Node.js
+        if: steps.frontend_paths.outputs.lock_exists == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
+          cache-dependency-path: ${{ steps.frontend_paths.outputs.lock_path }}
+
+      # Set up Node.js 20 without cache when lockfile is absent.
+      - name: Set up Node.js (no lockfile cache)
+        if: steps.frontend_paths.outputs.lock_exists != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
       # Use deterministic install when lockfile is present; otherwise fall back.
       - name: Install frontend dependencies
+        shell: bash
+        working-directory: ${{ steps.frontend_paths.outputs.frontend_dir }}
         run: |
           if [ -f package-lock.json ]; then
             npm ci
@@ -78,4 +136,5 @@ jobs:
 
       # Build the Vite + TypeScript frontend from project root.
       - name: Build frontend
+        working-directory: ${{ steps.frontend_paths.outputs.frontend_dir }}
         run: npm run build
