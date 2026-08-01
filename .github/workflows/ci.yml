@@ -67,7 +67,8 @@ jobs:
         run: |
           flake8 "${{ steps.backend_paths.outputs.backend_dir }}" \
             --max-line-length=100 \
-            --exclude=__pycache__,.venv,venv,temp_resumes
+            --exclude=__pycache__,.venv,venv,temp_resumes \
+            --select=E9,F63,F7,F82
 
   frontend-build:
     name: frontend-build

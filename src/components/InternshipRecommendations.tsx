@@ -101,21 +101,19 @@ const InternshipRecommendations = () => {
   const [proctorCategory, setProctorCategory] = useState("");
   const [hasTakenTest, setHasTakenTest] = useState(false);
 
-  const invokeAiRecommendations = async (body: Record<string, unknown>) => {
-    return supabase.functions.invoke("ai-recommendations", {
-      body,
-    });
-  };
+
 
   const fetchHistory = async () => {
     if (!user) return;
     try {
-      const { data, error } = await invokeAiRecommendations({
-        action: "get_history",
-        user_id: user.id,
-      });
+      const { data, error } = await supabase
+        .from("recommendation_history")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+        
       if (error) throw error;
-      if (data?.history) setHistory(data.history);
+      if (data) setHistory(data);
     } catch (e) {
       console.error("History fetch error", e);
     }
@@ -208,12 +206,17 @@ const InternshipRecommendations = () => {
       toast.info("Resume parsed! analyzing details...");
 
       // Auto-fill using AI
-      const { data, error } = await invokeAiRecommendations({
-        action: "parse_resume",
-        resumeText: text,
+      const response = await fetch("http://localhost:5001/parse-resume", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resumeText: text }),
       });
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
 
       if (data?.profile) {
         console.log("Extracted Profile Data:", data.profile);
@@ -376,10 +379,9 @@ const InternshipRecommendations = () => {
         // Save to History (Explicitly)
         if (user) {
           try {
-            const { data: hData, error: historyError } = await invokeAiRecommendations({
-              action: "save_history",
+            const { error: historyError } = await supabase.from("recommendation_history").insert({
               user_id: user.id,
-              studentProfile: profile,
+              student_profile: profile,
               recommendations: filteredRecommendations,
             });
             

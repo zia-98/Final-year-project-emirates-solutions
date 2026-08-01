@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Menu, X, Phone, Mail, ShoppingBag, User, Settings, Briefcase, Book } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
@@ -20,6 +20,7 @@ const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
 
   const { totalItems, openCart } = useCart();
@@ -171,7 +172,14 @@ const Header = () => {
                         </Link>
                       </DropdownMenuItem>
                     )}
-                    <DropdownMenuItem onClick={() => signOut()}>
+                    <DropdownMenuItem onClick={async () => {
+                      try {
+                        await signOut();
+                        navigate("/auth");
+                      } catch (error) {
+                        console.error("Header sign out failed:", error);
+                      }
+                    }}>
                       Sign Out
                     </DropdownMenuItem>
                   </DropdownMenuContent>

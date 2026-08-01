@@ -68,8 +68,12 @@ const AdminLayout = ({ children, title }: AdminLayoutProps) => {
   }, []);
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate("/");
+    try {
+      await signOut();
+      navigate("/auth");
+    } catch (error) {
+      console.error("Admin sign out failed:", error);
+    }
   };
 
   const breadcrumbs = location.pathname.split("/").filter(Boolean).map((path, index, arr) => {

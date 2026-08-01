@@ -123,7 +123,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      const { error } = await supabase.auth.signOut({ scope: "local" });
+
+      if (error && import.meta.env.DEV) {
+        console.warn("Sign out returned an auth error:", error);
+      }
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn("Unexpected sign out error:", error);
+      }
+    } finally {
+      // Clear local state immediately so the UI updates even if the auth client
+      // hits a restricted storage/runtime environment.
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+      setLoading(false);
+    }
   };
 
   const refreshProfile = async () => {

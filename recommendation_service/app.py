@@ -19,7 +19,10 @@ from roadmap_generator import AI_RoadmapGenerator
 from database import engine, Base, get_db
 from models import InternshipCriteria, Candidate
 from parser import extract_text
-from ai_screener import evaluate_resume
+from ai_screener import evaluate_resume, _generate_with_model_fallback, _extract_response_text
+import re
+import json
+from pydantic import BaseModel
 
 load_dotenv(override=True)
 
@@ -116,6 +119,48 @@ async def generate_roadmap(request: Request):
         roadmap = roadmap_generator.generate(title, duration, student_profile, availability)
 
         return {"success": True, "roadmap": roadmap}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+class ParseResumeRequest(BaseModel):
+    resumeText: str
+
+@app.post("/parse-resume")
+async def parse_resume(request: ParseResumeRequest):
+    try:
+        resume_text = request.resumeText[:3000]
+        if not resume_text.strip():
+            raise HTTPException(status_code=400, detail="resumeText is required")
+
+        parse_prompt = f"""
+        You are an expert resume parser. Extract the following structured data from the resume text provided below.
+        Return ONLY valid JSON. No markdown.
+
+        Fields to Extract:
+        - skills: comma separated string of technical skills
+        - interests: comma separated string of inferred professional interests
+        - education: one of ["high-school", "diploma", "bachelors", "masters", "phd"] (infer based on highest level mentioned or in progress)
+        - preferredDomain: one of ["Software Testing Intern", "Cybersecurity Intern", "Web Development Intern", "Digital Marketing Intern", "Data Analytics Intern", "Cloud Computing Intern", "AI/ML Intern"] (infer based on skills/projects) or null
+        - pythonLevel: "Beginner", "Intermediate", or "Advanced" (infer from context/projects)
+        - sqlLevel: "Beginner", "Intermediate", or "Advanced"
+        - javaLevel: "Beginner", "Intermediate", or "Advanced"
+        - projects: 1-2 sentence summary of key projects mentioned
+        - locationPreference: one of ["Remote", "In-office", "Hybrid"] (infer if mentioned, else default to "Remote")
+
+        Resume Text:
+        {resume_text}
+        """
+
+        response, _ = await _generate_with_model_fallback(parse_prompt)
+        text = _extract_response_text(response)
+        
+        json_content = text
+        match = re.search(r"\{[\s\S]*\}", text)
+        if match:
+            json_content = match.group(0)
+            
+        data = json.loads(json_content.strip())
+        return {"success": True, "profile": data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

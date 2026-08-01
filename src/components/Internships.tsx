@@ -5,6 +5,7 @@ import { Clock, Users, Award, DollarSign } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useInternships } from "@/hooks/useInternships";
 import internshipBg from "@/assets/internship-bg.jpg";
 
 export type InternshipType = "paid" | "unpaid" | "stipend" | "Full-time" | "Part-time" | "Remote";
@@ -41,31 +42,11 @@ interface InternshipsProps {
 
 const Internships = ({ showAll = false }: InternshipsProps) => {
   const [activeTab, setActiveTab] = useState("all");
-  const [internshipData, setInternshipData] = useState<Internship[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchInternships = async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("internships")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("Error fetching internships:", error);
-      } else {
-        setInternshipData(data as any || []);
-      }
-      setLoading(false);
-    };
-
-    fetchInternships();
-  }, []);
+  const { internships: internshipData, loading } = useInternships();
 
   const filteredInternships = activeTab === "all" 
     ? internshipData 
-    : internshipData.filter(i => i.type?.toLowerCase() === activeTab.toLowerCase());
+    : internshipData.filter(i => (i.type || "unpaid").toLowerCase() === activeTab.toLowerCase());
 
   const displayedInternships = showAll ? filteredInternships : filteredInternships.slice(0, 4);
 
